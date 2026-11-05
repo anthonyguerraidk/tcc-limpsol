@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Solar Cleaning Manager</title>
+    <link rel="stylesheet" href="./css/style.css" />
+  </head>
+  <body>
+    <div class="app">
+      <header>
+        <h1>Solar Cleaning Manager</h1>
+        <p>Mobile Control System</p>
+      </header>
+
+      <div class="section">
+        <div id="dashboard" class="card">
+          <h2>Dashboard</h2>
+
+          <div class="stats">
+            <div class="stat-box">
+              <span id="dotdb" style="color: red">●</span>
+              <h3 id="dbtype">Database</h3>
+              <p id="dbStatus" style="color: red">-</p>
+            </div>
+            <div class="stat-box">
+              <span id="dotesp" style="color: red">●</span>
+              <h3>ESP32</h3>
+              <p id="espStatus" style="color: red">-</p>
+            </div>
+            <div class="stat-box">
+              <h3>Panels Cleaned</h3>
+              <p id="panelsCleaned">0</p>
+            </div>
+
+            <div class="stat-box">
+              <h3>Water Usage</h3>
+              <p id="waterUsage">0</p>
+            </div>
+          </div>
+
+          <div class="sensors">
+            <div class="sensor">
+              <span>Current voltage</span>
+              <strong id="voltageInput">0</strong>
+            </div>
+
+            <div class="sensor">
+              <span>Dust Level</span>
+              <strong id="dustLevel">Low</strong>
+            </div>
+
+            <div class="sensor">
+              <span>Water Tank</span>
+              <strong id="waterTank">0%</strong>
+            </div>
+
+            <div class="sensor">
+              <span>Pump Status</span>
+              <strong id="pumpStatus" style="color: green">Unknown</strong>
+            </div>
+          </div>
+
+          <div id="actions">
+            <button id="clen" class="btn-primary" onclick="startCleaning()">
+              Start Cleaning
+            </button>
+
+            <!--<button class="btn-secondary">
+                        Rinsing Mode
+                    </button>-->
+
+            <!--<button class="btn-secondary">
+                        Brushing Mode
+                    </button>-->
+
+            <!--work on this-->
+            <button id="stop" class="btn-danger" onclick="stopCleaning()">
+              Stop System
+            </button>
+          </div>
+
+          <br />
+
+          <div class="card">
+            <h2>Automatic Activation</h2>
+
+            <div class="stat-box">
+              <div class="auto-header">
+                <span id="dotesp" class="status-dot">●</span>
+                <h3>Data</h3>
+              </div>
+
+              <p id="espStatus">Inactive</p>
+
+              <div class="auto-control">
+                <div class="auto-info">
+                  <strong>Automatic cleaning</strong>
+                  <small>Activate cleaning based on sensors</small>
+                </div>
+
+                <label class="modern-switch">
+                  <input type="checkbox" id="autoMode" />
+                  <span class="modern-slider"></span>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-primary" onclick="invoke()">test</button>
+        <div hidden id="logs" class="card">
+          <h2>Cleaning Log</h2>
+
+          <div class="log-item">
+            <div class="log-date">May 28, 2026 - 09:40</div>
+            <strong>Automatic Cleaning</strong>
+            <p>Dust accumulation detected</p>
+            <div class="badge">Rinsing + Brushing</div>
+          </div>
+
+          <div class="log-item">
+            <div class="log-date">May 27, 2026 - 17:20</div>
+            <strong>Manual Cleaning</strong>
+            <p>Routine maintenance</p>
+            <div class="badge">Rinsing Only</div>
+          </div>
+        </div>
+      </div>
+
+      <nav class="bottom-nav">
+        <button onclick="changePage('dashboard')">
+          <span>⌂</span>Dashboard
+        </button>
+        <button onclick="changePage('logs')"><span>▤</span>Logs</button>
+      </nav>
+    </div>
+    <script src="./js/api.js"></script>
+    <script src="./js/dashboard.js"></script>
+  </body>
+</html>
