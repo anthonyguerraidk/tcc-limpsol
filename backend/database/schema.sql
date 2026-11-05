@@ -13,7 +13,8 @@ CREATE TABLE IF NOT EXISTS sensorReadings (
     commandAck VARCHAR(255) DEFAULT NULL,
 
     recordedAt TIMESTAMP NOT NULL
-        DEFAULT CURRENT_TIMESTAMP
+        DEFAULT CURRENT_TIMESTAMP,
+    INDEX idx_sensor_recorded_at (recordedAt)
 );
 
 CREATE TABLE IF NOT EXISTS cleaningHistory (

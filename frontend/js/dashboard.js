@@ -1,297 +1,95 @@
-//this variable tracks whether one of the funcition buttons has been pressed
-//so there is immediate feedback to the user,
-//bc theres a delay before the esp answers
-let cleanDown = false;
-let dbUp = false;
-let espUp = false;
-let dataAvailable = false;
+let connected = false;
+let busy = false;
 let autoClean = false;
-let panic = false;
+let polling = false;
 
-async function invoke() {
-  const response = await fetch(`${API}/powerData`);
-  const data = await response.json();
-  if (data.status == 404) {
-    console.log("data unavailable");
-    return;
-  }
-  console.log(data);
+function showMessage(message) {
+  document.getElementById("connectionMessage").textContent = message;
 }
-
+function setStatus(id, online) {
+  const element = document.getElementById(id);
+  element.textContent = online ? "UP" : "DOWN";
+  element.style.color = online ? "green" : "red";
+}
+function updateButtons() {
+  document.getElementById("clen").disabled = !connected || busy;
+}
 async function getInfo() {
+  if (polling) return;
+  polling = true;
   try {
-    const response = await fetch(`${API}/data`);
-    const data = await response.json();
-    //console.log(data)
-
-    // \/           database page management
-
-    const dbta = data.dbta;
-    if (!dbta.connected) {
-      console.log("database not connected!");
-      genDB("down");
-    } else {
-      genDB("up", dbta.type);
-    }
-
-    // /\
-    // \/           esp page management
-
+    const [data, settings] = await Promise.all([apiRequest("/data"), apiRequest("/settings")]);
     const esp = data.esp;
-    if (!esp.connected) {
-      console.log("esp not connected!");
-      genESP32("down");
-    } else {
-      genESP32("up");
-    }
-
-    // /\
-    // \/
-    if (esp.connected) {
-      if (esp.status == "nowCleaning" || cleanDown) {
-        disBtns();
-      } else if (esp.status == "idle" || esp.status == "doneCleaning") {
-        enBtns();
-      } else {
-        disBtns();
-        console.log(`Invalid state...?\n${esp.satus}`);
-      }
-      updateValues(esp);
-    }
-  } catch (err) {
-    console.log("critial error QwQ");
-
-    genESP32("down");
-    genDB("down");
-    panic = true;
-    disBtns();
-    console.error(err);
+    connected = esp.connected;
+    busy = esp.command === "clean" || esp.status === "nowCleaning";
+    setStatus("dbStatus", data.dbta.connected);
+    setStatus("espStatus", connected);
+    document.getElementById("dotdb").style.color = data.dbta.connected ? "green" : "red";
+    document.getElementById("dotesp").style.color = connected ? "green" : "red";
+    document.getElementById("panelsCleaned").textContent = esp.panelsCleaned;
+    document.getElementById("waterUsage").textContent = `${esp.waterUsage} L`;
+    document.getElementById("voltageInput").textContent = `${esp.power} V`;
+    document.getElementById("dustLevel").textContent = `${esp.dustLevel}%`;
+    document.getElementById("waterTank").textContent = `${esp.waterTank}%`;
+    document.getElementById("pumpStatus").textContent = connected ? (esp.pumpStatus ? "Active" : "Stopped") : "Unknown";
+    autoClean = settings.autoClean;
+    document.getElementById("autoMode").checked = autoClean;
+    showMessage(connected ? "Conectado" : "API conectada. Aguardando ESP32.");
+  } catch (error) {
+    connected = false;
+    setStatus("dbStatus", false);
+    setStatus("espStatus", false);
+    showMessage(error.message);
+  } finally {
+    updateButtons(); polling = false;
   }
 }
-
-// /\
-
-// \/ logs
-
-async function getLogs() {
-  document.getElementById("logs").innerHTML = "";
-  const response = await fetch(`${API}/logs`);
-  const data = await response.json().then((data) => (data = data[0]));
-  data.forEach((data) => {
-    let time = new Date(data.createdAt);
-    time = time.toLocaleString("en-US", {
-      month: "short",
-      day: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: false
-    });
-    document.getElementById("logs").innerHTML += `
-                <div class="log-item">
-                    <div class="log-date">${time}</div>
-                    <strong>${data.eventType}</strong>
-                    <p>${data.description}</p>
-                    <div class="badge">${data.severity}</div>
-                </div>
-            `;
-  });
-}
-
-// /\
-
-// \/   page functions
-
-let pages = ["dashboard", "logs"];
-function changePage(page) {
-  let ok = false;
-  for (let i = 0; i < pages.length; i++) {
-    document.getElementById(pages[i]).setAttribute("hidden", "");
-    if (page == pages[i]) {
-      ok = true;
-    }
-  }
-  if (!ok) {
-    document.getElementById("dashboard").removeAttribute("hidden");
-    console.log("page doesnt exist");
-    return;
-  }
-  document.getElementById(page).removeAttribute("hidden");
-}
-
-//      i can merge these two functions btw
-function genDB(a, b) {
-  //          switch version:
-
-  switch (a) {
-    case "up":
-      document.getElementById("dotdb").style.color = "green";
-      document.getElementById("dbStatus").style.color = "green";
-      document.getElementById("dbStatus").innerText = "UP";
-      document.getElementById("dbtype").innerText = `Database (${b})`;
-      dbUp = true;
-      break;
-    case "down":
-    default:
-      document.getElementById("dotdb").style.color = "red";
-      document.getElementById("dbStatus").style.color = "red";
-      document.getElementById("dbStatus").innerText = "DOWN";
-      dbUp = false;
-      break;
-  }
-
-  /*          if version:
-
-            if(a=="down"){
-                console.log("esp disconnected... :p");
-                    document.getElementById("dotesp").style.color="red";
-                    document.getElementById("espStatus").style.color="red";
-                    document.getElementById("espStatus").innerText="DOWN";
-                    disBtns();
-            }else if(a=="up"){
-                document.getElementById("dotesp").style.color="green";
-                document.getElementById("espStatus").style.color="green";
-                document.getElementById("espStatus").innerText="UP";
-                enBtns();
-            }else{
-                //repeat a=="down" code
-            }
-*/
-}
-
-function genESP32(a) {
-  //          switch version:
-
-  switch (a) {
-    case "up":
-      document.getElementById("dotesp").style.color = "green";
-      document.getElementById("espStatus").style.color = "green";
-      document.getElementById("espStatus").innerText = "UP";
-      espUp = true;
-      enBtns();
-      break;
-    case "down":
-    default:
-      document.getElementById("dotesp").style.color = "red";
-      document.getElementById("espStatus").style.color = "red";
-      document.getElementById("espStatus").innerText = "DOWN";
-      espUp = false;
-      disBtns();
-      break;
-  }
-
-  /*          if version:
-
-            if(a=="down"){
-                console.log("esp disconnected... :p");
-                    document.getElementById("dotesp").style.color="red";
-                    document.getElementById("espStatus").style.color="red";
-                    document.getElementById("espStatus").innerText="DOWN";
-                    disBtns();
-            }else if(a=="up"){
-                document.getElementById("dotesp").style.color="green";
-                document.getElementById("espStatus").style.color="green";
-                document.getElementById("espStatus").innerText="UP";
-                enBtns();
-            }else{
-                //repeat a=="down" code
-            }
-*/
-}
-
-//as of now this function can only be called from inside the getInfo() function bc 'esp' is private... not necessary to open it up rn i guess
-function updateValues(esp) {
-  document.getElementById("panelsCleaned").innerText = esp.panelsCleaned;
-  document.getElementById("waterUsage").innerText = `${esp.waterUsage}L`;
-  document.getElementById("voltageInput").innerText = `${esp.power}V`;
-  document.getElementById("dustLevel").innerText = esp.dustLevel;
-  document.getElementById("waterTank").innerText = `${esp.waterTank}%`;
-
-  const pump = document.getElementById("pumpStatus");
-  pump.innerText = esp.pumpStatus ? "Active" : "Stopped";
-  pump.style.color = esp.pumpStatus ? "green" : "red";
-  document.getElementById("autoMode").checked = esp.autoMode;
-  //console.log(`currently: ${esp.command}`)
-}
-
-function disBtns() {
-  cleanDown = false; //for some reason it works here... well, whatever
-  document.querySelectorAll("#actions button").forEach((btn) => {
-    btn.setAttribute("disabled", "");
-    btn.setAttribute("class", "dis");
-  });
-}
-
-function enBtns() {
-  cleanDown = false;
-  document.querySelectorAll("#actions button").forEach((btn) => {
-    btn.removeAttribute("disabled", "");
-    document.getElementById("clen").setAttribute("class", "btn-primary");
-    document.getElementById("stop").setAttribute("class", "btn-danger");
-  });
-}
-
-// /\   page functions
-
-// \/   esp functions
-
 async function startCleaning() {
-  cleanDown = true;
+  busy = true; updateButtons();
   try {
-    const response = await fetch(`${API}/clean/start`, {
-      method: "POST"
-    });
-    const data = await response.json();
-    console.log(data.command);
-    getInfo();
-  } catch (err) {
-    console.error(err);
+    await apiRequest("/clean/start", { method: "POST" });
+    showMessage("Limpeza solicitada. Aguardando confirmação do ESP32.");
+  } catch (error) {
+    busy = false; updateButtons(); showMessage(error.message);
   }
 }
-
-//work on this, not working
-async function stopCleaning() {
+async function getLogs() {
+  const container = document.getElementById("logEntries");
+  container.textContent = "Carregando...";
   try {
-    await fetch(`${API}/clean/stop`, {
-      method: "POST"
-    });
-
-    getInfo();
-  } catch (err) {
-    console.error(err);
-  }
-}
-
-// /\   esp functions
-
-// \/   im... not sure what this does, ill leave it uncommented for now... apparently its related to the most important part of the project, the automation part...
-document.addEventListener("DOMContentLoaded", () => {
-  document
-    .getElementById("autoMode")
-    .addEventListener("change", async function () {
-      await fetch(`${API}/auto`, {
-        method: "POST"
-      });
-      autoClean = !autoClean;
-      if (autoClean) {
-        document.getElementById("autoMode").setAttribute("checked", "");
-      } else {
-        document.getElementById("autoMode").removeAttribute("checked");
+    const logs = await apiRequest("/logs");
+    container.replaceChildren();
+    if (!logs.length) container.textContent = "Nenhum registro disponível.";
+    for (const log of logs) {
+      const item = document.createElement("div"); item.className = "log-item";
+      for (const [tag, value] of [["div", new Date(log.createdAt).toLocaleString("pt-BR")], ["strong", log.eventType], ["p", log.description], ["div", log.severity]]) {
+        const element = document.createElement(tag); element.textContent = value; item.append(element);
       }
-    });
-
-  getInfo();
-
-  // Refresh every 4 seconds, if alls fine
-  if (!panic) {
-    setInterval(getInfo, 4000);
-  } else {
-    console.log("SOMETHING WRONG!!!");
-  }
-  disBtns();
+      container.append(item);
+    }
+  } catch (error) { container.textContent = error.message; }
+}
+function changePage(page) {
+  for (const name of ["dashboard", "logs"]) document.getElementById(name).hidden = name !== page;
+  if (page === "logs") getLogs();
+}
+document.addEventListener("DOMContentLoaded", () => {
+  document.getElementById("accessForm").addEventListener("submit", event => {
+    event.preventDefault();
+    accessKey = document.getElementById("accessKey").value.trim();
+    document.getElementById("accessKey").value = "";
+    getInfo();
+  });
+  document.getElementById("autoMode").addEventListener("change", async function () {
+    this.disabled = true;
+    try {
+      const result = await apiRequest("/settings/update/autoClean", {
+        method: "POST", body: JSON.stringify({ autoClean: this.checked })
+      });
+      autoClean = result.settings.autoClean;
+    } catch (error) { showMessage(error.message); }
+    finally { this.checked = autoClean; this.disabled = false; }
+  });
+  updateButtons(); getInfo();
+  setInterval(getInfo, 5000);
 });
-// /\   ...
-getInfo();
-getLogs();
-console.log("retrieved info and logs");

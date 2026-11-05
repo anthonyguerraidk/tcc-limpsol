@@ -1,33 +1,26 @@
 import { Router } from "express";
 
-import { settings } from "../services/espService.js";
+import { settings, salvarSettings } from "../services/espService.js";
 
 const router = Router();
 
-// Consulta as configurações atuais
+// Consulta as configuraÃ§Ãµes atuais
 router.get("/settings", (req, res) => {
   res.json(settings);
 });
 
-// Atualiza a limpeza automática
-router.post("/settings/update/autoClean", (req, res) => {
-  const { autoClean, autoCleanTrigger } = req.body;
+// Atualiza a limpeza automÃ¡tica
+router.post("/settings/update/autoClean", async (req, res) => {
+  const { autoClean, autoCleanTrigger } = req.body || {};
 
-  if (typeof autoClean === "boolean") {
-    settings.autoClean = autoClean;
+  if (typeof autoClean !== "boolean" || (autoCleanTrigger !== undefined &&
+      (!Number.isFinite(autoCleanTrigger) || autoCleanTrigger < 0 || autoCleanTrigger > 100))) {
+    return res.status(400).json({ error: "ConfiguraÃ§Ãµes invÃ¡lidas" });
   }
-
-  if (
-    typeof autoCleanTrigger === "number" &&
-    Number.isFinite(autoCleanTrigger) &&
-    autoCleanTrigger >= 0 &&
-    autoCleanTrigger <= 100
-  ) {
-    settings.autoCleanTrigger = autoCleanTrigger;
-  }
+  await salvarSettings({ autoClean, ...(autoCleanTrigger !== undefined ? { autoCleanTrigger } : {}) });
 
   res.json({
-    message: "Configurações atualizadas",
+    message: "ConfiguraÃ§Ãµes atualizadas",
     settings
   });
 });

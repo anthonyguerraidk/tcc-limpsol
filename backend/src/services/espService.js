@@ -7,6 +7,21 @@ export const settings = {
   autoCleanTrigger: 40
 };
 
+export async function carregarSettings() {
+  const [rows] = await db.execute("SELECT settingValue FROM systemSettings WHERE settingKey = ?", ["autoClean"]);
+  if (rows.length) {
+    const saved = JSON.parse(rows[0].settingValue);
+    if (typeof saved.autoClean === "boolean") settings.autoClean = saved.autoClean;
+    if (Number.isFinite(saved.autoCleanTrigger) && saved.autoCleanTrigger >= 0 && saved.autoCleanTrigger <= 100) settings.autoCleanTrigger = saved.autoCleanTrigger;
+  }
+}
+
+export async function salvarSettings(values) {
+  const updated = { ...settings, ...values };
+  await db.execute("INSERT INTO systemSettings (settingKey, settingValue) VALUES (?, ?) ON DUPLICATE KEY UPDATE settingValue = VALUES(settingValue)", ["autoClean", JSON.stringify(updated)]);
+  Object.assign(settings, updated);
+}
+
 // Estado atual do ESP32
 export const esp = {
   connected: false,
@@ -39,7 +54,7 @@ export function iniciarLimpeza() {
     return false;
   }
 
-  if (esp.status === "nowCleaning") {
+  if (esp.status === "nowCleaning" || esp.command === "clean") {
     return false;
   }
 
@@ -93,6 +108,7 @@ export async function salvarLeitura() {
   `;
 
   await db.execute(sql, [esp.power, esp.dustLevel, esp.status, esp.ack]);
+  dbta.connected = true;
 }
 
 // Retorna leituras da última hora
@@ -136,7 +152,7 @@ export async function verificarLimpezaAutomatica() {
     return;
   }
 
-  esp.dustLevel = Number((100 - mapa(media, 0, 13, 0, 100)).toFixed(2));
+  esp.dustLevel = Math.max(0, Math.min(100, Number((100 - mapa(media, 0, 13, 0, 100)).toFixed(2))));
 
   if (esp.dustLevel > settings.autoCleanTrigger) {
     iniciarLimpeza();
@@ -145,7 +161,7 @@ export async function verificarLimpezaAutomatica() {
 
 // Verifica se o ESP32 continua conectado
 export function verificarConexao() {
-  if (Date.now() - esp.lastSeen > 6000) {
+  if (Date.now() - esp.lastSeen > 30000) {
     esp.connected = false;
     esp.pumpStatus = false;
     esp.command = "idle";

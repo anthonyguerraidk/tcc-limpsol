@@ -14,6 +14,12 @@
       </header>
 
       <div class="section">
+        <form id="accessForm" class="card">
+          <label for="accessKey">Chave de acesso ao painel</label>
+          <input id="accessKey" type="password" autocomplete="off" placeholder="Informe a chave de acesso" />
+          <button type="submit" class="btn-primary">Conectar</button>
+          <p id="connectionMessage" role="status" aria-live="polite">Conectando...</p>
+        </form>
         <div id="dashboard" class="card">
           <h2>Dashboard</h2>
 
@@ -75,7 +81,7 @@
                     </button>-->
 
             <!--work on this-->
-            <button id="stop" class="btn-danger" onclick="stopCleaning()">
+            <button id="stop" class="btn-danger" disabled title="O firmware original não implementa parada remota">
               Stop System
             </button>
           </div>
@@ -87,11 +93,11 @@
 
             <div class="stat-box">
               <div class="auto-header">
-                <span id="dotesp" class="status-dot">●</span>
+                <span class="status-dot">●</span>
                 <h3>Data</h3>
               </div>
 
-              <p id="espStatus">Inactive</p>
+              <p>Configuração de automação</p>
 
               <div class="auto-control">
                 <div class="auto-info">
@@ -108,23 +114,9 @@
           </div>
         </div>
 
-        <button class="btn-primary" onclick="invoke()">test</button>
         <div hidden id="logs" class="card">
           <h2>Cleaning Log</h2>
-
-          <div class="log-item">
-            <div class="log-date">May 28, 2026 - 09:40</div>
-            <strong>Automatic Cleaning</strong>
-            <p>Dust accumulation detected</p>
-            <div class="badge">Rinsing + Brushing</div>
-          </div>
-
-          <div class="log-item">
-            <div class="log-date">May 27, 2026 - 17:20</div>
-            <strong>Manual Cleaning</strong>
-            <p>Routine maintenance</p>
-            <div class="badge">Rinsing Only</div>
-          </div>
+          <div id="logEntries"></div>
         </div>
       </div>
 
@@ -135,6 +127,7 @@
         <button onclick="changePage('logs')"><span>▤</span>Logs</button>
       </nav>
     </div>
+    <script src="./js/config.js"></script>
     <script src="./js/api.js"></script>
     <script src="./js/dashboard.js"></script>
   </body>

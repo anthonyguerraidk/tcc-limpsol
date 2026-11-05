@@ -45,12 +45,13 @@ router.get("/powerData", async (req, res) => {
 // Recebe informações do ESP32
 router.post("/heartbeat", async (req, res) => {
   try {
-    const { power, status, ack } = req.body;
+    const { power, status, ack } = req.body || {};
 
     if (
       typeof power !== "number" ||
       !Number.isFinite(power) ||
-      typeof status !== "string"
+      !["idle", "nowCleaning", "doneCleaning"].includes(status) ||
+      (ack !== undefined && (typeof ack !== "string" || ack.length > 255))
     ) {
       return res.status(400).json({
         error: "Dados inválidos"
